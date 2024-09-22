@@ -1,0 +1,52 @@
+name: Terraform Deployment
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetching the code
+        uses: actions/checkout@v2
+
+      - name: Setup AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Echo the Key
+        run: |
+          echo "${{ secrets.KEY_PAIR }}" | base64
+
+      - name: Add SSH key to SSH agent
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.KEY_PAIR }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/id_rsa
+
+
+      - name: Set up Terraform Environment
+        uses: hashicorp/setup-terraform@v1
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      # - name: Terraform Pull
+      #   working-directory: ./terraform
+      #   run: terraform state pull
+
+
+      - name: Terraform Apply
+        working-directory: ./terraform
+        run: terraform apply -auto-approve
+
+      
